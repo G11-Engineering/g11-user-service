@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { getDatabase } from '../config/database';
 import { createError } from '../middleware/errorHandler';
@@ -65,7 +65,7 @@ export const getUsers = async (req: AuthRequest, res: Response, next: NextFuncti
   }
 };
 
-export const getUserById = async (req: Request | AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getUserById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const db = getDatabase();
