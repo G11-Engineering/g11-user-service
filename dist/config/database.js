@@ -1,21 +1,17 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.closeDatabase = exports.getDatabase = exports.connectDatabase = void 0;
 const pg_1 = require("pg");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const app_1 = require("./app");
 let pool;
 const connectDatabase = async () => {
     try {
         pool = new pg_1.Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-            max: 20,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000,
+            connectionString: app_1.config.database.url,
+            ssl: app_1.config.server.nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
+            max: app_1.config.database.pool.max,
+            idleTimeoutMillis: app_1.config.database.pool.idleTimeoutMillis,
+            connectionTimeoutMillis: app_1.config.database.pool.connectionTimeoutMillis,
         });
         // Test the connection
         const client = await pool.connect();

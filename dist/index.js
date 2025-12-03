@@ -7,25 +7,23 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const auth_1 = require("./routes/auth");
 const users_1 = require("./routes/users");
 const errorHandler_1 = require("./middleware/errorHandler");
 const database_1 = require("./config/database");
 const initialize_1 = require("./migrations/initialize");
-dotenv_1.default.config();
+const app_1 = require("./config/app");
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3001;
 // Security middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: app_1.config.frontend.allowedOrigins,
     credentials: true
 }));
 // Rate limiting
 const limiter = (0, express_rate_limit_1.default)({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    windowMs: app_1.config.security.rateLimit.windowMs,
+    max: app_1.config.security.rateLimit.max,
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
@@ -33,12 +31,12 @@ app.use(limiter);
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
 // Health check
-app.get('/health', (req, res) => {
+app.get(app_1.config.paths.health, (req, res) => {
     res.json({ status: 'OK', service: 'user-service', timestamp: new Date().toISOString() });
 });
 // Routes
-app.use('/api/auth', auth_1.authRoutes);
-app.use('/api/users', users_1.userRoutes);
+app.use(app_1.config.paths.authPrefix, auth_1.authRoutes);
+app.use(app_1.config.paths.usersPrefix, users_1.userRoutes);
 // Error handling
 app.use(errorHandler_1.errorHandler);
 // 404 handler
@@ -50,9 +48,9 @@ async function startServer() {
     try {
         await (0, database_1.connectDatabase)();
         await (0, initialize_1.initializeDatabase)();
-        app.listen(PORT, () => {
-            console.log(`User Service running on port ${PORT}`);
-            console.log(`Health check: http://localhost:${PORT}/health`);
+        app.listen(app_1.config.server.port, app_1.config.server.host, () => {
+            console.log(`User Service running on ${app_1.config.server.baseUrl}`);
+            console.log(`Health check: ${app_1.config.server.baseUrl}${app_1.config.paths.health}`);
         });
     }
     catch (error) {

@@ -6,6 +6,7 @@ import { getDatabase } from '../config/database';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { validateAsgardeoToken, extractUserInfo } from '../utils/asgardeoValidator';
+import { config } from '../config/app';
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -23,7 +24,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, config.security.bcryptRounds);
 
     // Create user with 'reader' role (default for all new registrations)
     // Admins can upgrade to author/editor/admin via admin panel
@@ -38,8 +39,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
     );
 
     res.status(201).json({
@@ -89,16 +90,16 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
     );
 
     // Store session
     const sessionId = uuidv4();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + config.security.sessionExpirationDays * 24 * 60 * 60 * 1000);
     await db.query(
       'INSERT INTO user_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
-      [user.id, jwt.sign({ sessionId }, process.env.JWT_SECRET as string), expiresAt]
+      [user.id, jwt.sign({ sessionId }, config.jwt.secret), expiresAt]
     );
 
     res.json({
@@ -138,8 +139,8 @@ export const refreshToken = async (req: AuthRequest, res: Response, next: NextFu
     // Generate new token
     const token = jwt.sign(
       { userId: id, email, role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
     );
 
     res.json({ token });
@@ -276,17 +277,17 @@ export const asgardeoLogin = async (req: Request, res: Response, next: NextFunct
         email: user.email,
         role: user.role
       },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
     );
 
     // 8. Create session
     const sessionId = uuidv4();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + config.security.sessionExpirationDays * 24 * 60 * 60 * 1000);
 
     await db.query(
       'INSERT INTO user_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
-      [user.id, jwt.sign({ sessionId }, process.env.JWT_SECRET as string), expiresAt]
+      [user.id, jwt.sign({ sessionId }, config.jwt.secret), expiresAt]
     );
 
     // 9. Return success response with OUR token

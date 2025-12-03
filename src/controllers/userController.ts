@@ -4,11 +4,12 @@ import { getDatabase } from '../config/database';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { syncUserStatusWithAsgardeo, isAsgardeoManagementConfigured } from '../utils/asgardeoManagement';
+import { config } from '../config/app';
 
 export const getUsers = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const db = getDatabase();
-    const { page = 1, limit = 10, role, search } = req.query;
+    const { page = 1, limit = config.pagination.defaultLimit, role, search } = req.query;
     
     let query = 'SELECT id, email, username, first_name, last_name, role, is_active, created_at FROM users';
     const conditions: string[] = [];
@@ -228,7 +229,7 @@ export const changePassword = async (req: AuthRequest, res: Response, next: Next
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const hashedPassword = await bcrypt.hash(newPassword, config.security.bcryptRounds);
 
     // Update password
     await db.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', 

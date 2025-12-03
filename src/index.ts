@@ -2,29 +2,26 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 import { authRoutes } from './routes/auth';
 import { userRoutes } from './routes/users';
 import { errorHandler } from './middleware/errorHandler';
 import { connectDatabase } from './config/database';
 import { initializeDatabase } from './migrations/initialize';
-
-dotenv.config();
+import { config } from './config/app';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: config.frontend.allowedOrigins,
   credentials: true
 }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: config.security.rateLimit.windowMs,
+  max: config.security.rateLimit.max,
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
@@ -34,13 +31,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
-app.get('/health', (req, res) => {
+app.get(config.paths.health, (req, res) => {
   res.json({ status: 'OK', service: 'user-service', timestamp: new Date().toISOString() });
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+app.use(config.paths.authPrefix, authRoutes);
+app.use(config.paths.usersPrefix, userRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -56,9 +53,9 @@ async function startServer() {
     await connectDatabase();
     await initializeDatabase();
     
-    app.listen(PORT, () => {
-      console.log(`User Service running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
+    app.listen(config.server.port, config.server.host, () => {
+      console.log(`User Service running on ${config.server.baseUrl}`);
+      console.log(`Health check: ${config.server.baseUrl}${config.paths.health}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

@@ -7,7 +7,7 @@ exports.changePasswordSchema = exports.updateProfileSchema = exports.updateUserS
 const joi_1 = __importDefault(require("joi"));
 exports.updateUserSchema = joi_1.default.object({
     firstName: joi_1.default.string().max(100).required(),
-    lastName: joi_1.default.string().max(100).required(),
+    lastName: joi_1.default.string().max(100).allow('').required(),
     role: joi_1.default.string().valid('reader', 'author', 'editor', 'admin').required(),
     isActive: joi_1.default.boolean().required()
 });

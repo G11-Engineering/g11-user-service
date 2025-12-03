@@ -1,18 +1,16 @@
 import { Pool } from 'pg';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { config } from './app';
 
 let pool: Pool;
 
 export const connectDatabase = async (): Promise<void> => {
   try {
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionString: config.database.url,
+      ssl: config.server.nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
+      max: config.database.pool.max,
+      idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
+      connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis,
     });
 
     // Test the connection

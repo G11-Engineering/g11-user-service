@@ -7,10 +7,12 @@ exports.changePassword = exports.updateUserProfile = exports.getUserProfile = ex
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const database_1 = require("../config/database");
 const errorHandler_1 = require("../middleware/errorHandler");
+const asgardeoManagement_1 = require("../utils/asgardeoManagement");
+const app_1 = require("../config/app");
 const getUsers = async (req, res, next) => {
     try {
         const db = (0, database_1.getDatabase)();
-        const { page = 1, limit = 10, role, search } = req.query;
+        const { page = 1, limit = app_1.config.pagination.defaultLimit, role, search } = req.query;
         let query = 'SELECT id, email, username, first_name, last_name, role, is_active, created_at FROM users';
         const conditions = [];
         const params = [];
@@ -62,8 +64,20 @@ const getUserById = async (req, res, next) => {
     try {
         const { id } = req.params;
         const db = (0, database_1.getDatabase)();
-        const result = await db.query('SELECT id, email, username, first_name, last_name, role, avatar_url, bio, is_active, created_at FROM users WHERE id = $1', [id]);
+        // Check if this is an authenticated request (for additional info) or public service-to-service call
+        const isAuthenticated = 'user' in req && req.user;
+        // For authenticated requests, return more details
+        // For service-to-service calls, return basic user info needed for auth
+        const query = isAuthenticated
+            ? 'SELECT id, email, username, first_name, last_name, role, avatar_url, bio, is_active, created_at FROM users WHERE id = $1'
+            : 'SELECT id, email, username, first_name, last_name, role, is_active FROM users WHERE id = $1';
+        const result = await db.query(query, [id]);
         if (result.rows.length === 0) {
+            throw (0, errorHandler_1.createError)('User not found', 404);
+        }
+        const user = result.rows[0];
+        // For service-to-service calls, only return active users
+        if (!isAuthenticated && !user.is_active) {
             throw (0, errorHandler_1.createError)('User not found', 404);
         }
         res.json({ user: result.rows[0] });
@@ -78,17 +92,29 @@ const updateUser = async (req, res, next) => {
         const { id } = req.params;
         const { firstName, lastName, role, isActive } = req.body;
         const db = (0, database_1.getDatabase)();
-        // Check if user exists
-        const existingUser = await db.query('SELECT id FROM users WHERE id = $1', [id]);
+        // Check if user exists and get current status
+        const existingUser = await db.query('SELECT id, email, is_active FROM users WHERE id = $1', [id]);
         if (existingUser.rows.length === 0) {
             throw (0, errorHandler_1.createError)('User not found', 404);
         }
+        const user = existingUser.rows[0];
+        const statusChanged = user.is_active !== isActive;
+        // Update local database
         const result = await db.query(`
-      UPDATE users 
+      UPDATE users
       SET first_name = $1, last_name = $2, role = $3, is_active = $4, updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
       RETURNING id, email, username, first_name, last_name, role, is_active, updated_at
     `, [firstName, lastName, role, isActive, id]);
+        // Sync status with Asgardeo if status changed and API is configured
+        if (statusChanged && (0, asgardeoManagement_1.isAsgardeoManagementConfigured)()) {
+            console.log(`📊 User status changed for ${user.email}: ${user.is_active} → ${isActive}`);
+            // Run async sync (don't block response)
+            (0, asgardeoManagement_1.syncUserStatusWithAsgardeo)(user.email, isActive).catch((error) => {
+                console.error(`⚠️ Failed to sync status with Asgardeo for ${user.email}:`, error);
+                // Log the error but don't fail the request - local update already succeeded
+            });
+        }
         res.json({ user: result.rows[0] });
     }
     catch (error) {
@@ -176,7 +202,7 @@ const changePassword = async (req, res, next) => {
             throw (0, errorHandler_1.createError)('Current password is incorrect', 400);
         }
         // Hash new password
-        const hashedPassword = await bcryptjs_1.default.hash(newPassword, 12);
+        const hashedPassword = await bcryptjs_1.default.hash(newPassword, app_1.config.security.bcryptRounds);
         // Update password
         await db.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [hashedPassword, req.user.id]);
         res.json({ message: 'Password changed successfully' });

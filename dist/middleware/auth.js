@@ -7,6 +7,7 @@ exports.requireAuthor = exports.requireEditor = exports.requireAdmin = exports.r
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../config/database");
 const errorHandler_1 = require("./errorHandler");
+const app_1 = require("../config/app");
 const authenticateToken = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -14,7 +15,7 @@ const authenticateToken = async (req, res, next) => {
         if (!token) {
             throw (0, errorHandler_1.createError)('Access token required', 401);
         }
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        const decoded = jsonwebtoken_1.default.verify(token, app_1.config.jwt.secret);
         // Verify user still exists and is active
         const db = (0, database_1.getDatabase)();
         const result = await db.query('SELECT id, email, username, role, is_active FROM users WHERE id = $1', [decoded.userId]);

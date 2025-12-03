@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '../config/database';
 import { createError } from './errorHandler';
+import { config } from '../config/app';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -25,7 +26,7 @@ export const authenticateToken = async (
       throw createError('Access token required', 401);
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const decoded = jwt.verify(token, config.jwt.secret) as any;
     
     // Verify user still exists and is active
     const db = getDatabase();
