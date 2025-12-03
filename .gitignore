@@ -1,1 +1,25 @@
+<<<<<<< HEAD
 dist/
+=======
+# Node.js
+node_modules/
+npm-debug.log
+.env
+dist/
+build/
+*.log
+
+# Next.js build files
+.next/
+frontend/.next/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+test-scim-api.js
+>>>>>>> 90024316895195659f9570fd51a526c39a13fd90
