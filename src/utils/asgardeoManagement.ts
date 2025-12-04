@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { config } from '../config/app';
 import { getDatabase } from '../config/database';
 
 /**
@@ -33,14 +34,14 @@ let tokenCache: {
 };
 
 /**
- * Get Asgardeo configuration from environment variables
+ * Get Asgardeo configuration from centralized config
  * Uses M2M (Machine-to-Machine) credentials for backend operations
  */
 function getAsgardeoConfig(): AsgardeoConfig {
-  const baseUrl = process.env.ASGARDEO_BASE_URL;
-  const clientId = process.env.ASGARDEO_M2M_CLIENT_ID;
-  const clientSecret = process.env.ASGARDEO_M2M_CLIENT_SECRET;
-  const organizationName = process.env.ASGARDEO_ORG_NAME;
+  const baseUrl = config.asgardeo.baseUrl;
+  const clientId = config.asgardeo.m2mClientId;
+  const clientSecret = config.asgardeo.m2mClientSecret;
+  const organizationName = config.asgardeo.organizationName;
 
   if (!baseUrl || !clientId || !clientSecret || !organizationName) {
     throw new Error(
