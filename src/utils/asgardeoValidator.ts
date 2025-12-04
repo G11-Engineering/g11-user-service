@@ -1,9 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { createError } from '../middleware/errorHandler';
+import { config } from '../config/app'
 
-// Asgardeo configuration
-const ASGARDEO_BASE_URL = process.env.ASGARDEO_BASE_URL || 'https://api.asgardeo.io/t/g11engineering';
-const ASGARDEO_CLIENT_ID = process.env.ASGARDEO_CLIENT_ID || 'Y4Yrhdn2PcIxQRLfWYDdEycYTfUa';
 
 interface AsgardeoTokenPayload {
   sub: string;
@@ -39,8 +37,8 @@ export async function validateAsgardeoToken(idToken: string): Promise<AsgardeoTo
     }
 
     // Validate audience (should be your client ID)
-    if (decoded.aud && decoded.aud !== ASGARDEO_CLIENT_ID) {
-      console.warn('⚠️ Token audience mismatch. Expected:', ASGARDEO_CLIENT_ID, 'Got:', decoded.aud);
+    if (decoded.aud && decoded.aud !== config.asgardeo.clientId) {
+      console.warn('⚠️ Token audience mismatch. Expected:', config.asgardeo.clientId, 'Got:', decoded.aud);
     }
 
     // Validate issuer
