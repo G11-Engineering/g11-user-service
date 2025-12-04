@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { createError } from '../middleware/errorHandler';
-import { config } from '../config/app';
+import { config } from '../config/app'
+
 
 interface AsgardeoTokenPayload {
   sub: string;
@@ -90,6 +91,7 @@ export function mapAsgardeoGroupsToRole(groups: string[] = []): string {
  */
 export function extractUserInfo(payload: AsgardeoTokenPayload) {
   return {
+    asgardeoUserId: payload.sub,
     email: payload.email,
     firstName: payload.given_name || payload.email.split('@')[0],
     lastName: payload.family_name || '',
