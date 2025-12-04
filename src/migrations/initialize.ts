@@ -9,14 +9,10 @@ export const initializeDatabase = async (): Promise<void> => {
     const db = getDatabase();
     
     // Read and execute the schema
-<<<<<<< HEAD
     // Schema path can be configured via environment variable, otherwise use default
     const schemaPath = process.env.DATABASE_SCHEMA_PATH 
       ? process.env.DATABASE_SCHEMA_PATH
-      : path.join(__dirname, '../../../../database/schemas/user-service.sql');
-=======
-    const schemaPath = path.join(__dirname, '../../database/schemas/user-service.sql');
->>>>>>> 90024316895195659f9570fd51a526c39a13fd90
+      : path.join(__dirname, '../../database/schemas/user-service.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
     
     await db.query(schema);
