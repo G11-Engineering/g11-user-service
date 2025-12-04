@@ -247,13 +247,13 @@ export async function syncUserStatusWithAsgardeo(email: string, isActive: boolea
 
 /**
  * Check if Asgardeo Management API is configured
- * Returns true if all required environment variables are set
+ * Returns true if all required configuration values are set
  */
 export function isAsgardeoManagementConfigured(): boolean {
   return !!(
-    process.env.ASGARDEO_BASE_URL &&
-    process.env.ASGARDEO_M2M_CLIENT_ID &&
-    process.env.ASGARDEO_M2M_CLIENT_SECRET &&
-    process.env.ASGARDEO_ORG_NAME
+    config.asgardeo.baseUrl &&
+    config.asgardeo.m2mClientId &&
+    config.asgardeo.m2mClientSecret &&
+    config.asgardeo.organizationName
   );
 }
