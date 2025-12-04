@@ -227,9 +227,10 @@ export const asgardeoLogin = async (req: Request, res: Response, next: NextFunct
           last_name,
           role,
           is_active,
-          email_verified
+          email_verified,
+          asgardeo_user_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id, email, username, first_name, last_name, role, is_active, created_at
       `, [
         userInfo.email,
@@ -239,7 +240,8 @@ export const asgardeoLogin = async (req: Request, res: Response, next: NextFunct
         userInfo.lastName,
         userInfo.role, // Default 'reader' role - admins can upgrade via admin panel
         true, // is_active
-        true  // email_verified (Asgardeo handles verification)
+        true,  // email_verified (Asgardeo handles verification)
+        userInfo.asgardeoUserId // Store Asgardeo user ID for user management
       ]);
 
       user = userResult.rows[0];
@@ -257,9 +259,10 @@ export const asgardeoLogin = async (req: Request, res: Response, next: NextFunct
           first_name = $1,
           last_name = $2,
           email_verified = true,
+          asgardeo_user_id = $4,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $3
-      `, [userInfo.firstName, userInfo.lastName, user.id]);
+      `, [userInfo.firstName, userInfo.lastName, user.id, userInfo.asgardeoUserId]);
 
       user.first_name = userInfo.firstName;
       user.last_name = userInfo.lastName;

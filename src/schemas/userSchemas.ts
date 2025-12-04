@@ -2,14 +2,14 @@ import Joi from 'joi';
 
 export const updateUserSchema = Joi.object({
   firstName: Joi.string().max(100).required(),
-  lastName: Joi.string().max(100).allow('').required(),
+  lastName: Joi.string().max(100).allow(''),
   role: Joi.string().valid('reader', 'author', 'editor', 'admin').required(),
   isActive: Joi.boolean().required()
 });
 
 export const updateProfileSchema = Joi.object({
   firstName: Joi.string().max(100).required(),
-  lastName: Joi.string().max(100).required(),
+  lastName: Joi.string().max(100).allow(''),
   bio: Joi.string().max(1000).allow(''),
   avatarUrl: Joi.string().uri().allow(''),
   website: Joi.string().uri().allow(''),
