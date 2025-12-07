@@ -53,7 +53,7 @@ async function startServer() {
     await connectDatabase();
     await initializeDatabase();
     
-    app.listen(config.server.port, config.server.host, () => {
+    app.listen(config.server.port, () => {
       console.log(`User Service running on ${config.server.baseUrl}`);
       console.log(`Health check: ${config.server.baseUrl}${config.paths.health}`);
     });
