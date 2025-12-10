@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 import { createError } from '../middleware/errorHandler';
-import { config } from '../config/app'
+import { config } from '../config/app';
 
 
 interface AsgardeoTokenPayload {
@@ -14,19 +15,65 @@ interface AsgardeoTokenPayload {
   exp: number;
 }
 
+// Initialize JWKS client with caching for performance
+// JWKS endpoint: https://api.asgardeo.io/t/{organization_name}/oauth2/jwks
+const client = jwksClient({
+  jwksUri: `${config.asgardeo.baseUrl}/oauth2/jwks`,
+  cache: true,
+  cacheMaxAge: 86400000, // 24 hours - public keys rarely change
+  rateLimit: true,
+  jwksRequestsPerMinute: 10
+});
+
 /**
- * Validates Asgardeo ID token
- * Note: In production, this should verify the signature using Asgardeo's public keys (JWKS)
- * For now, we decode and validate the structure
+ * Get signing key from JWKS endpoint
+ */
+function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
+  client.getSigningKey(header.kid, (err, key) => {
+    if (err) {
+      console.error('❌ Failed to get signing key from JWKS:', err.message);
+      callback(err);
+      return;
+    }
+    const signingKey = key?.getPublicKey();
+    callback(null, signingKey);
+  });
+}
+
+/**
+ * Validates Asgardeo ID token with proper signature verification
+ *
+ * Per Asgardeo documentation:
+ * - Verifies signature using JWKS endpoint
+ * - Validates issuer, audience, and expiration claims
+ *
+ * @see https://wso2.com/asgardeo/docs/guides/authentication/oidc/validate-id-tokens/
  */
 export async function validateAsgardeoToken(idToken: string): Promise<AsgardeoTokenPayload> {
   try {
-    // Decode token (without verification for now - add jwks-rsa for production)
-    const decoded = jwt.decode(idToken) as any;
+    console.log('🔐 Validating Asgardeo ID token with JWKS signature verification...');
 
-    if (!decoded) {
-      throw createError('Invalid token format', 401);
-    }
+    // Verify token signature using Asgardeo's public key from JWKS endpoint
+    const decoded = await new Promise<any>((resolve, reject) => {
+      jwt.verify(
+        idToken,
+        getKey,
+        {
+          audience: config.asgardeo.clientId,
+          issuer: `${config.asgardeo.baseUrl}/oauth2/token`,
+          algorithms: ['RS256']
+        },
+        (err, decoded) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(decoded);
+        }
+      );
+    });
+
+    console.log('✅ Token signature verified successfully');
 
     // Asgardeo may use 'username' or 'email' claim depending on configuration
     const email = decoded.email || decoded.username;
@@ -34,21 +81,6 @@ export async function validateAsgardeoToken(idToken: string): Promise<AsgardeoTo
     // Validate required fields
     if (!email) {
       throw createError('Token missing email/username claim', 401);
-    }
-
-    // Validate audience (should be your client ID)
-    if (decoded.aud && decoded.aud !== config.asgardeo.clientId) {
-      console.warn('⚠️ Token audience mismatch. Expected:', config.asgardeo.clientId, 'Got:', decoded.aud);
-    }
-
-    // Validate issuer
-    if (decoded.iss && !decoded.iss.includes('asgardeo.io')) {
-      throw createError('Invalid token issuer', 401);
-    }
-
-    // Check expiration
-    if (decoded.exp && decoded.exp < Date.now() / 1000) {
-      throw createError('Token has expired', 401);
     }
 
     return {
@@ -65,7 +97,23 @@ export async function validateAsgardeoToken(idToken: string): Promise<AsgardeoTo
     if (error.statusCode) {
       throw error;
     }
-    console.error('❌ Token validation error:', error);
+
+    console.error('❌ Token validation error:', error.message || error);
+
+    // Provide specific error messages based on error type
+    if (error.name === 'TokenExpiredError') {
+      throw createError('Asgardeo token has expired', 401);
+    }
+    if (error.name === 'JsonWebTokenError') {
+      throw createError('Invalid Asgardeo token signature', 401);
+    }
+    if (error.name === 'NotBeforeError') {
+      throw createError('Asgardeo token not yet valid', 401);
+    }
+    if (error.message?.includes('JWKS') || error.message?.includes('signing key')) {
+      throw createError('Failed to fetch Asgardeo public keys. Check network connectivity to *.asgardeo.io', 503);
+    }
+
     throw createError('Failed to validate Asgardeo token', 401);
   }
 }
